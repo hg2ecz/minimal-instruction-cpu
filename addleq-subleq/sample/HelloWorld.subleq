@@ -1,0 +1,37 @@
+SUBLEQ    # first line: TYPE of VCPU
+# --------------------------------
+# Func mem_addr
+# Stdin  0x00
+# Stdout 0x01
+# RAM    0x02 .. 0x7F
+# ROM    0x80 .. 0xFF
+# --------------------------------
+# Instruction format: addrA addrB JMPaddr
+# Operation:  mem[addrA] -= mem[addrB] and if <= 0, PC += JMPaddr
+# I/O out default value is always 0, so  out = 0 - mem[addrB];
+# --------------------------------
+
+# negative charcode
+# ------------------
+rom -0x48 -0x65 -0x6C -0x6C -0x6F -0x20 
+rom -0x57 -0x6F -0x72 -0x6C -0x64 -0x21 -0x0A # Hello World!\n
+rom  10 -1    # for loop
+
+# -- start --
+2 0x8d 0        # 0 - 10
+# ---- loop inner -----
+1 0x80 0	# 0x00 - 'H' from rom
+1 0x81 0	# 0x00 - 'e' from rom
+1 0x82 0	# 0x00 - 'l' from rom
+1 0x83 0
+1 0x84 0
+1 0x85 0
+1 0x86 0
+1 0x87 0
+1 0x88 0
+1 0x89 0
+1 0x8a 0
+1 0x8b 0
+1 0x8c 0
+# ---- loop inner end -----
+2 0x8e -14       # -10 -  -1 ==> loop if zero or less
