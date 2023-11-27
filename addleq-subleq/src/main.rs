@@ -52,6 +52,16 @@ fn compiler(src: &str) -> (bool, Vec<Instr>, Vec<i16>) {
 
 // -- VCPU Runner --
 
+fn getchar() -> i16 {
+    let mut inp: [u8; 1] = [0; 1];
+    io::stdin().read_exact(&mut inp).expect("failed to read");
+    inp[0] as i16
+}
+
+fn putchar(value: i16) {
+    print!("{}", char::from_u32(value as u32).unwrap());
+}
+
 struct Vcpu {
     data: [i16; 256],
 }
@@ -61,11 +71,7 @@ impl Vcpu {
     fn mem_rd(&self, addr: u8) -> i16 {
         match addr {
             // Stdin
-            0 => {
-                let mut inp: [u8; 1] = [0; 1];
-                io::stdin().read_exact(&mut inp).expect("failed to read");
-                inp[0] as i16
-            }
+            0 => getchar(),
             // Stdout
             1 => 0,
             // RAM, ROM
@@ -79,7 +85,7 @@ impl Vcpu {
             // Stdin
             0 => (),
             // Stdout
-            1 => print!("{}", char::from_u32(value as u32).unwrap()),
+            1 => putchar(value),
             // ROM write not allowed
             0x80..=0xff => (),
             // RAM
