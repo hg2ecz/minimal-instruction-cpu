@@ -103,7 +103,7 @@ impl Vcpu {
         assert!(addr <= 0x0f);
         match addr {
             0xfe => self.putbit(value),            // stdout
-            _ => self.data[addr as usize] = value, // RAM, 0x0f: JMP indicator
+            _ => self.data[addr as usize] = value, // RAM, 0xff: JMP indicator
         }
     }
 
@@ -111,7 +111,7 @@ impl Vcpu {
         let mut pc = 0;
         // CPU run
         while pc < prog.len() {
-            // Cond JMP, 0x0f reg & clr
+            // Cond JMP, 0xff reg & clr
             let jmpflag_default = match self.cputype {
                 CpuType::Nand => true, // true & true --> false
                 CpuType::Nor => false, // false | false --> true
