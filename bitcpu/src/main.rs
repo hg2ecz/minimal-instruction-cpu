@@ -89,12 +89,17 @@ impl Vcpu {
 
     // Memory & memory mapped functions
     fn mem_rd(&self, addr: u8) -> bool {
-        assert!(addr <= 0x0f);
+        let tf = match self.cputype {
+            CpuType::Nand => true, // true & true --> false
+            CpuType::Nor => false, // false | false --> true
+            CpuType::Xor => false,
+            CpuType::Xnor => false,
+        };
         match addr {
             0x00..=0xfc => self.data[addr as usize], // generic RAM
             0xfd => self.getbit(),                   // stdin  - Read stdin,
-            0xfe => true,                            // stdout - Read TRUE
-            0xff => false,                           // ROM    - Read FALSE, Write jmp indicator
+            0xfe => tf,                              // stdout - Read  const
+            0xff => !tf,                             // ROM    - Read !const, Write jmp indicator
         }
     }
 
@@ -118,8 +123,8 @@ impl Vcpu {
         let mut pc = 0;
         // CPU run
         while pc < prog.len() {
-            // Cond JMP, 0xff reg & clr
-            if self.mem_rd(0x0f) ^ jmpflag_default {
+            // Cond JMP, direct read 0xff reg & clr
+            if self.data[0xff] ^ jmpflag_default {
                 pc = prog[pc] as usize;
                 self.mem_wr(0xff, jmpflag_default); // jmp flag reset
             } else {
