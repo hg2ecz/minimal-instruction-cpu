@@ -1,6 +1,10 @@
 use std::fs::File;
 use std::io::{self, Read};
 
+enum CpuType {
+    Addleq,
+    Subleq,
+}
 // addrA addrB jmpaddr
 type Instr = (u8, u8, i16);
 
@@ -14,8 +18,8 @@ fn parser(value: &str) -> i16 {
     }
 }
 
-fn compiler(src: &str) -> (bool, Vec<Instr>, Vec<i16>) {
-    let mut addleq = false;
+fn compiler(src: &str) -> (CpuType, Vec<Instr>, Vec<i16>) {
+    let mut cputype = CpuType::Subleq;
     let mut prog = vec![];
     let mut rom = vec![];
     for (i, line) in src.lines().enumerate() {
@@ -24,14 +28,14 @@ fn compiler(src: &str) -> (bool, Vec<Instr>, Vec<i16>) {
             continue;
         }
         if i == 0 {
-            match rowstart {
-                "ADDLEQ" => addleq = true,
-                "SUBLEQ" => addleq = false,
+            cputype = match rowstart {
+                "ADDLEQ" => CpuType::Addleq,
+                "SUBLEQ" => CpuType::Subleq,
                 _ => {
                     eprintln!("First line: ADDLEQ or SUBLEQ");
                     std::process::exit(-1);
                 }
-            }
+            };
             continue;
         }
         let mut token = rowstart.split_whitespace();
@@ -47,7 +51,7 @@ fn compiler(src: &str) -> (bool, Vec<Instr>, Vec<i16>) {
             prog.push((addr_a, addr_b, jmpaddr));
         }
     }
-    (addleq, prog, rom)
+    (cputype, prog, rom)
 }
 
 // -- VCPU Runner --
@@ -63,6 +67,7 @@ fn putchar(value: i16) {
 }
 
 struct Vcpu {
+    cputype: CpuType,
     data: [i16; 256],
 }
 
@@ -70,56 +75,36 @@ impl Vcpu {
     // Memory & memory mapped functions
     fn mem_rd(&self, addr: u8) -> i16 {
         match addr {
-            // Stdin
-            0 => getchar(),
-            // Stdout
-            1 => 0,
-            // RAM, ROM
-            _ => self.data[addr as usize],
+            0x00..=0xfd => self.data[addr as usize], // RAM, ROM
+            0xfe => getchar(),                       // Stdin
+            0xff => 0,                               // Stdout, read 0
         }
     }
 
     // Memory & memory mapped functions
     fn mem_wr(&mut self, addr: u8, value: i16) {
         match addr {
-            // Stdin
-            0 => (),
-            // Stdout
-            1 => putchar(value),
-            // ROM write not allowed
-            0x80..=0xff => (),
-            // RAM
-            _ => self.data[addr as usize] = value,
+            0x00..=0x7f => self.data[addr as usize] = value, // RAM, last: readable stdout
+            0x80..=0xfe => (),                               // ROM write not allowed
+            0xff => putchar(value),                          // Stdout
         }
     }
 
-    pub fn new() -> Self {
+    pub fn new(cputype: CpuType) -> Self {
         let data: [i16; 256] = [0; 256];
-        Vcpu { data }
+        Vcpu { cputype, data }
     }
 
-    pub fn runner_addleq(&mut self, prog: &[Instr], rom: &[i16]) {
+    pub fn runner(&mut self, prog: &[Instr], rom: &[i16]) {
         self.data[0x80..0x80 + rom.len()].copy_from_slice(rom);
         let mut pc = 0;
         // CPU run
         while pc < prog.len() {
             let instr = prog[pc];
-            let result = self.mem_rd(instr.0) + self.mem_rd(instr.1); // ADDLEQ
-            self.mem_wr(instr.0, result);
-            if result <= 0 {
-                pc += instr.2 as usize;
-            }
-            pc += 1;
-        }
-    }
-
-    pub fn runner_subleq(&mut self, prog: &[Instr], rom: &[i16]) {
-        self.data[0x80..0x80 + rom.len()].copy_from_slice(rom);
-        let mut pc = 0;
-        // CPU run
-        while pc < prog.len() {
-            let instr = prog[pc];
-            let result = self.mem_rd(instr.0) - self.mem_rd(instr.1); // SUBLEQ
+            let result = match self.cputype {
+                CpuType::Addleq => self.mem_rd(instr.0) + self.mem_rd(instr.1),
+                CpuType::Subleq => self.mem_rd(instr.0) - self.mem_rd(instr.1),
+            };
             self.mem_wr(instr.0, result);
             if result <= 0 {
                 pc += instr.2 as usize;
@@ -134,13 +119,9 @@ fn main() {
         let mut file = File::open(fname).expect("program file not found");
         let mut src = String::new();
         file.read_to_string(&mut src).expect("failed to read");
-        let (addleq, prog, rom) = compiler(&src);
-        let mut vcpu = Vcpu::new();
-        if addleq {
-            vcpu.runner_addleq(&prog, &rom);
-        } else {
-            vcpu.runner_subleq(&prog, &rom);
-        }
+        let (cputype, prog, rom) = compiler(&src);
+        let mut vcpu = Vcpu::new(cputype);
+        vcpu.runner(&prog, &rom);
     } else {
         eprintln!("usage: subleq <file.subleq>");
     }
