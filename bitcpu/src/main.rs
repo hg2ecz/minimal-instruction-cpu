@@ -96,10 +96,9 @@ impl Vcpu {
             CpuType::Xnor => false,
         };
         match addr {
-            0x00..=0xfc => self.data[addr as usize], // generic RAM
-            0xfd => self.getbit(),                   // stdin  - Read stdin,
-            0xfe => tf,                              // stdout - Read  const
-            0xff => !tf,                             // ROM    - Read !const, Write jmp indicator
+            0x00..=0xfd => self.data[addr as usize], // generic RAM, 0xfd: JMP indicator
+            0xfe => self.getbit(),                   // stdin  - Read stdin,
+            0xff => tf,                              // stdout - Read const
         }
     }
 
@@ -107,8 +106,8 @@ impl Vcpu {
     fn mem_wr(&mut self, addr: u8, value: bool) {
         assert!(addr <= 0x0f);
         match addr {
-            0xfe => self.putbit(value),            // stdout
-            _ => self.data[addr as usize] = value, // RAM, 0xff: JMP indicator
+            0x00..=0xfe => self.data[addr as usize] = value, // RAM, 0xfd write: JMP indicator
+            0xff => self.putbit(value),                      // stdout
         }
     }
 
@@ -124,9 +123,9 @@ impl Vcpu {
         // CPU run
         while pc < prog.len() {
             // Cond JMP, direct read 0xff reg & clr
-            if self.data[0xff] ^ jmpflag_default {
+            if self.mem_rd(0xfd) ^ jmpflag_default {
                 pc = prog[pc] as usize;
-                self.mem_wr(0xff, jmpflag_default); // jmp flag reset
+                self.mem_wr(0xfd, jmpflag_default); // jmp flag reset
             } else {
                 let rega = (prog[pc] >> 8) as u8;
                 let regb = prog[pc] as u8;
