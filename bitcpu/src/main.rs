@@ -107,7 +107,7 @@ impl Vcpu {
         }
     }
 
-    pub fn runner_nandcpu(&mut self, prog: &[Instr]) {
+    pub fn runner(&mut self, prog: &[Instr]) {
         let mut pc = 0;
         // CPU run
         while pc < prog.len() {
@@ -137,7 +137,7 @@ fn main() {
         file.read_to_string(&mut src).expect("failed to read");
         let (cputype, prog) = compiler(&src);
         let mut vcpu = Vcpu::new(cputype);
-        vcpu.runner_nandcpu(&prog);
+        vcpu.runner(&prog);
     } else {
         eprintln!("usage: nandcpu <file.bcpu>");
     }
