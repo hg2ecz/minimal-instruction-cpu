@@ -49,11 +49,21 @@ fn compiler(src: &str) -> (CpuType, Vec<Instr>) {
 
 // -- VCPU Runner --
 struct Vcpu {
+    outct: u8, // for formatted print!()
     cputype: CpuType,
     data: [bool; 256],
 }
 
 impl Vcpu {
+    pub fn new(cputype: CpuType) -> Self {
+        let data = [false; 256];
+        Vcpu {
+            outct: 0,
+            cputype,
+            data,
+        }
+    }
+
     fn getbit(&self) -> bool {
         loop {
             let mut inp: [u8; 1] = [0; 1];
@@ -64,8 +74,17 @@ impl Vcpu {
         }
     }
 
-    fn putbit(&self, value: bool) {
+    fn putbit(&mut self, value: bool) {
         print!("{}", (0x30 + value as u8) as char);
+        self.outct += 1;
+        match self.outct {
+            4 => print!(" "),
+            8 => {
+                print!("  ");
+                self.outct = 0;
+            }
+            _ => (),
+        }
     }
 
     // Memory & memory mapped functions
@@ -86,11 +105,6 @@ impl Vcpu {
             0xfe => self.putbit(value),            // stdout
             _ => self.data[addr as usize] = value, // RAM, 0x0f: JMP indicator
         }
-    }
-
-    pub fn new(cputype: CpuType) -> Self {
-        let data = [false; 256];
-        Vcpu { cputype, data }
     }
 
     pub fn runner_nandcpu(&mut self, prog: &[Instr]) {
