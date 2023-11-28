@@ -108,16 +108,17 @@ impl Vcpu {
     }
 
     pub fn runner(&mut self, prog: &[Instr]) {
+        let jmpflag_default = match self.cputype {
+            CpuType::Nand => true, // true & true --> false
+            CpuType::Nor => false, // false | false --> true
+            CpuType::Xor => false,
+            CpuType::Xnor => false,
+        };
+
         let mut pc = 0;
         // CPU run
         while pc < prog.len() {
             // Cond JMP, 0xff reg & clr
-            let jmpflag_default = match self.cputype {
-                CpuType::Nand => true, // true & true --> false
-                CpuType::Nor => false, // false | false --> true
-                CpuType::Xor => false,
-                CpuType::Xnor => false,
-            };
             if self.mem_rd(0x0f) ^ jmpflag_default {
                 pc = prog[pc] as usize;
                 self.mem_wr(0xff, jmpflag_default); // jmp flag reset
