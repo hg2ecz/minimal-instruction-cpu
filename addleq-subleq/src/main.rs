@@ -142,6 +142,6 @@ fn main() {
             vcpu.runner_subleq(&prog, &rom);
         }
     } else {
-        eprintln!("usage: brainfuck <file.bf>");
+        eprintln!("usage: subleq <file.subleq>");
     }
 }
