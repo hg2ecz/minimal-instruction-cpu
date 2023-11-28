@@ -112,9 +112,15 @@ impl Vcpu {
         // CPU run
         while pc < prog.len() {
             // Cond JMP, 0x0f reg & clr
-            if self.mem_rd(0x0f) {
+            let jmpflag_default = match self.cputype {
+                CpuType::Nand => true, // true & true --> false
+                CpuType::Nor => false, // false | false --> true
+                CpuType::Xor => false,
+                CpuType::Xnor => false,
+            };
+            if self.mem_rd(0x0f) ^ jmpflag_default {
                 pc = prog[pc] as usize;
-                self.mem_wr(0xff, false); // reset jmp
+                self.mem_wr(0xff, jmpflag_default); // jmp flag reset
             } else {
                 let rega = (prog[pc] >> 8) as u8;
                 let regb = prog[pc] as u8;
