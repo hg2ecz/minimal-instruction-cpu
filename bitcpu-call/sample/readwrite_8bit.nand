@@ -2,7 +2,7 @@ NAND_CPU       # first line: TYPE of VCPU
 # -- addressing ---------------
 # 0x00 .. 0xfa : RAM bit
 # 0xfb         : return indicator, read H level
-# 0xfc         : cond jmp + u16 addr, read H level; src: call
+# 0xfc         : cond jmp + u16 addr, read H level; reg_b == 0xfc: call
 # 0xfd         : stdin
 # 0xfe         : stdout, read H level
 # 0xff         : read L level

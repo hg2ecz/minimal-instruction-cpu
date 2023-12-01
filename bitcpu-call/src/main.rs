@@ -96,19 +96,19 @@ impl Vcpu {
             CpuType::Xnor => false,
         };
         match addr {
-            0x00..=0xf9 => self.data[addr as usize], // generic RAM
-            0xfa => !tf,                             // 0xfb: ret, 0xfc: call, 0xfd: jmp
-            0xfb..=0xfd => self.data[addr as usize],
-            0xfe => self.getbit(), // stdin  - Read stdin,
-            0xff => tf,            // stdout - Read const
+            0x00..=0xfc => self.data[addr as usize], // generic RAM
+            0xfd => self.getbit(),                   // stdin  - Read stdin,
+            0xfe => tf,                              // stdout - Read const
+            0xff => !tf,                             // read const
         }
     }
 
     // Memory & memory mapped functions
     fn mem_wr(&mut self, addr: u8, value: bool) {
         match addr {
-            0x00..=0xfe => self.data[addr as usize] = value, // RAM, 0xfd write: JMP indicator
-            0xff => self.putbit(value),                      // stdout
+            0x00..=0xfd => self.data[addr as usize] = value, // RAM, 0xfd write: JMP indicator
+            0xfe => self.putbit(value),                      // stdout
+            0xff => (),
         }
     }
 
@@ -120,20 +120,15 @@ impl Vcpu {
             CpuType::Xnor => false,
         };
         self.mem_wr(0xfb, jmpflag_default); // no ret
-        self.mem_wr(0xfc, jmpflag_default); // no call
-        self.mem_wr(0xfd, jmpflag_default); // no jmp
+        self.mem_wr(0xfc, jmpflag_default); // no jmp
         let mut pc_save = vec![];
 
         let mut pc = 0;
         // CPU run
         while pc < prog.len() {
-            if self.mem_rd(0xfd) ^ jmpflag_default {
+            if self.mem_rd(0xfc) ^ jmpflag_default {
                 pc = prog[pc] as usize; // jmp
-                self.mem_wr(0xfd, jmpflag_default); // jmp flag reset
-            } else if self.mem_rd(0xfc) ^ jmpflag_default {
-                pc_save.push(pc); // call stack
-                pc = prog[pc] as usize; // jmp
-                self.mem_wr(0xfc, jmpflag_default); // call flag reset
+                self.mem_wr(0xfc, jmpflag_default); // jmp flag reset
             } else {
                 let rega = (prog[pc] >> 8) as u8;
                 let regb = prog[pc] as u8;
@@ -142,6 +137,10 @@ impl Vcpu {
                     CpuType::Nor => self.mem_wr(rega, !(self.mem_rd(rega) | self.mem_rd(regb))),
                     CpuType::Xor => self.mem_wr(rega, self.mem_rd(rega) ^ self.mem_rd(regb)),
                     CpuType::Xnor => self.mem_wr(rega, !(self.mem_rd(rega) ^ self.mem_rd(regb))),
+                }
+                if regb == 0xfc {
+                    pc_save.push(pc);
+                    self.mem_wr(0xfc, !jmpflag_default); // next: jmp
                 }
                 if rega == 0xfb && self.mem_rd(rega) ^ jmpflag_default {
                     pc = pc_save.pop().unwrap(); // return
