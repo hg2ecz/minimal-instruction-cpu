@@ -1,42 +1,42 @@
 NAND_CPU       # first line: TYPE of VCPU
 # -- addressing ---------------
 # 0x00 .. 0xfa : RAM bit
-# 0xfa         : read L level
 # 0xfb         : return indicator, read H level
-# 0xfc         : call + u16 addr, read H level
-# 0xfd         : jmp + u16 addr, read H level
-# 0xfe         : stdin
-# 0xff         : stdout, read H level
+# 0xfc         : cond jmp + u16 addr, read H level; src: call
+# 0xfd         : stdin
+# 0xfe         : stdout, read H level
+# 0xff         : read L level
+
 # --------------------------------
 # Instruction format: addrA addrB JMPaddr
 # Operation:  mem[addrA] -= mem[addrB] and if <= 0, PC += JMPaddr
 # I/O out default value is always 0, so  out = 0 - mem[addrB];
 # --------------------------------
 
-0x00fa # H -> 0x00
-0x01fa # H -> 0x01
-0x02fa # H -> 0x00
-0x03fa # H -> 0x01
-0x00fe # read bit
-0x01fe # read bit
-0x02fe # read bit
-0x03fe # read bit
+0x00ff # H -> 0x00
+0x01ff # H -> 0x01
+0x02ff # H -> 0x00
+0x03ff # H -> 0x01
+0x00fd # read bit
+0x01fd # read bit
+0x02fd # read bit
+0x03fd # read bit
 
-0x04fa # H -> 0x00
-0x05fa # H -> 0x01
-0x06fa # H -> 0x00
-0x07fa # H -> 0x01
-0x04fe # read bit
-0x05fe # read bit
-0x06fe # read bit
-0x07fe # read bit
+0x04ff # H -> 0x00
+0x05ff # H -> 0x01
+0x06ff # H -> 0x00
+0x07ff # H -> 0x01
+0x04fd # read bit
+0x05fd # read bit
+0x06fd # read bit
+0x07fd # read bit
 
-0xff00 # put bit
-0xff01 # put bit
-0xff02 # put bit
-0xff03 # put bit
+0xfe00 # put bit
+0xfe01 # put bit
+0xfe02 # put bit
+0xfe03 # put bit
 
-0xff04 # put bit
-0xff05 # put bit
-0xff06 # put bit
-0xff07 # put bit
+0xfe04 # put bit
+0xfe05 # put bit
+0xfe06 # put bit
+0xfe07 # put bit
