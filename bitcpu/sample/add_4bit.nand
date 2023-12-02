@@ -1,0 +1,104 @@
+NAND_CPU       # first line: TYPE of VCPU
+# -- addressing ---------------
+# 0x00 .. 0xfc : RAM bit
+# 0xfd         : stdin, stdout
+# 0xfe         : read L level, write: RET
+# 0xff         : read H level, write: JMP, if SRCB == 0xFE CALL
+# --------------------------------
+# Instructions: DST SRC1 SRC2
+# Operation:  *DST = !(*SRC1 & *SRC2)
+# --------------------------------
+
+# start
+# bit input: 0x10..0x17
+0x10fffd # read bit
+0x11fffd # read bit
+0x12fffd # read bit
+0x13fffd # read bit
+
+0x14fffd # read bit
+0x15fffd # read bit
+0x16fffd # read bit
+0x17fffd # read bit
+
+# 0. bit
+0x00ffff # lowest carry 0
+0x01ff13 # A
+0x02ff17 # B
+
+# 0: Carry in/out
+# 1: inA, a, result,
+# 2: inB, b
+# 3: tmp
+# 4: tmp2
+# See picture
+0x030102 # U1, tmp = nand(A, B) -> U2, U3, U9
+0x010301 # U2, a = nand(tmp, A) -> U4
+0x020302 # U3, b = nand(tmp, B) -> U4
+0x010102 # U4, a = nand(a, b) -> U5, U6
+0x040100 # U5, tmp2 = nand(a, Carry) -> U6, U7, U9
+0x010401 # U6, a = nand(tmp2, a) -> U8
+0x020400 # U7, b = nand(tmp2, Carry) -> U8
+0x010102 # U8, a = nand(a, b) -> A_out
+0x000304 # U9, carry = nand(tmp, tmp2) -> Carry_out
+
+0x0fff01 # store 0x0f
+
+# 1. bit
+0x01ff12 # A
+0x02ff16 # B
+
+0x030102 # U1, tmp = nand(A, B) -> U2, U3, U9
+0x010301 # U2, a = nand(tmp, A) -> U4
+0x020302 # U3, b = nand(tmp, B) -> U4
+0x010102 # U4, a = nand(a, b) -> U5, U6
+0x040100 # U5, tmp2 = nand(a, Carry) -> U6, U7, U9
+0x010401 # U6, a = nand(tmp2, a) -> U8
+0x020400 # U7, b = nand(tmp2, Carry) -> U8
+0x010102 # U8, a = nand(a, b) -> A_out
+0x000304 # U9, carry = nand(tmp, tmp2) -> Carry_out
+
+0x0eff01 # store 0x0e
+
+# 2. bit
+0x01ff11 # A
+0x02ff15 # B
+
+0x030102 # U1, tmp = nand(A, B) -> U2, U3, U9
+0x010301 # U2, a = nand(tmp, A) -> U4
+0x020302 # U3, b = nand(tmp, B) -> U4
+0x010102 # U4, a = nand(a, b) -> U5, U6
+0x040100 # U5, tmp2 = nand(a, Carry) -> U6, U7, U9
+0x010401 # U6, a = nand(tmp2, a) -> U8
+0x020400 # U7, b = nand(tmp2, Carry) -> U8
+0x010102 # U8, a = nand(a, b) -> A_out
+0x000304 # U9, carry = nand(tmp, tmp2) -> Carry_out
+
+0x0dff01 # store 0x0d
+
+# 3. bit
+0x01ff10 # A
+0x02ff14 # B
+
+0x030102 # U1, tmp = nand(A, B) -> U2, U3, U9
+0x010301 # U2, a = nand(tmp, A) -> U4
+0x020302 # U3, b = nand(tmp, B) -> U4
+0x010102 # U4, a = nand(a, b) -> U5, U6
+0x040100 # U5, tmp2 = nand(a, Carry) -> U6, U7, U9
+0x010401 # U6, a = nand(tmp2, a) -> U8
+0x020400 # U7, b = nand(tmp2, Carry) -> U8
+0x010102 # U8, a = nand(a, b) -> A_out
+0x000304 # U9, carry = nand(tmp, tmp2) -> Carry_out
+
+0x0cff01 # store 0x0c
+0x00ff00 # Read (invert) carry
+
+# print 5 bit result
+0xfdffff # put 0
+0xfdffff # put 0
+0xfdffff # put 0
+0xfdff00 # put bit #carry
+0xfdff0c # put bit
+0xfdff0d # put bit
+0xfdff0e # put bit
+0xfdff0f # put bit
