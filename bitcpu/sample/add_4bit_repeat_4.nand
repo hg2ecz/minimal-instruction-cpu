@@ -10,6 +10,9 @@ NAND_CPU       # first line: TYPE of VCPU
 # --------------------------------
 
 # start
+0x18fefe # zero (inv, counter)
+0x19fefe # zero (inv, counter)
+
 # bit input: 0x10..0x17
 0x10fffd # read bit
 0x11fffd # read bit
@@ -105,3 +108,36 @@ NAND_CPU       # first line: TYPE of VCPU
 0xfdff0d # put bit
 0xfdff0e # put bit
 0xfdff0f # put bit
+
+# for counter icrement
+# 0. bit
+0x01ff18 # A
+0x02fffe # B (inverted!)
+
+# Half Adder
+0x030102 # U1, tmp = nand(A, B) -> U2, U3, U4
+0x000303 # U2, carry_out = nand(tmp, tmp)
+0x010301 # U3, a = nand(tmp, a) -> U5
+0x020302 # U4, b = nand(tmp, B) -> U5
+0x010102 # U5, a_out = nand(a, b)
+
+0x18ff01 # store 0x0f
+
+# 1. bit
+0x01ff19 # A
+0x00ff00 # carry inv because nand
+0x02ff00 # B <- carry
+
+# Half Adder (because of increment)
+0x030102 # U1, tmp = nand(A, B) -> U2, U3, U4
+0x000303 # U2, carry_out = nand(tmp, tmp)
+0x010301 # U3, a = nand(tmp, a) -> U5
+0x020302 # U4, b = nand(tmp, B) -> U5
+0x010102 # U5, a_out = nand(a, b)
+
+0x19ff01 # store 0x0e
+0xffff00 # Conditional jmp
+2        # ADDR
+
+# For test only
+0xfdff00 # put carry bit

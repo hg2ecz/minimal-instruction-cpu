@@ -81,10 +81,11 @@ impl Vcpu {
         }
     }
 
-    fn trace_print_jmp(&self, pc: usize, a1: u8, a2: u8, a3: u8, trace: bool) {
+    fn trace_print_jmp(&self, pc: usize, a1: u8, a2: u8, a3: u8, trace: bool, call: bool) {
         if trace {
+            let tracemsg = if call { "call" } else { "jmp" };
             eprintln!("{pc:04x}: {a1:02x}, {a2:02x}, {a3:02x}");
-            eprintln!("--- jmp ---");
+            eprintln!("--- {tracemsg} ---");
         }
     }
 
@@ -149,14 +150,18 @@ impl Vcpu {
             pc += 1; // inc PC
 
             // jump if true OR call
-            if self.data[0xff] || (dst == 0xff && src2 == 0xfe) {
-                self.data[0xff] = false;
-                if src2 == 0xfe {
-                    pc_save.push(pc); // call
-                }
+            if dst == 0xff {
                 let (a1, a2, a3) = prog[pc];
-                self.trace_print_jmp(pc, a1, a2, a3, trace); // trace for debug
-                pc = (a1 as usize) << 16 | (a2 as usize) << 8 | a3 as usize;
+                self.trace_print_jmp(pc, a1, a2, a3, trace, src2 == 0xfe); // trace for debug
+                if self.data[0xff] || src2 == 0xfe {
+                    self.data[0xff] = false;
+                    if src2 == 0xfe {
+                        pc_save.push(pc); // call
+                    }
+                    pc = (a1 as usize) << 16 | (a2 as usize) << 8 | a3 as usize;
+                } else {
+                    pc += 1; // skip addr
+                }
             }
         }
     }

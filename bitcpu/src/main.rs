@@ -141,13 +141,17 @@ impl Vcpu {
                 CpuType::Xor => self.mem_wr(dst, self.mem_rd(src1) ^ self.mem_rd(src2)),
                 CpuType::Xnor => self.mem_wr(dst, !(self.mem_rd(src1) ^ self.mem_rd(src2))),
             }
-            pc += 1;
             // jump if true
-            if self.data[0xff] {
-                self.data[0xff] = false;
+            pc += 1;
+            if dst == 0xff {
                 let (a1, a2, a3) = prog[pc];
                 self.trace_print_jmp(pc, a1, a2, a3, trace); // trace for debug
-                pc = (a1 as usize) << 16 | (a2 as usize) << 8 | a3 as usize;
+                if self.data[0xff] {
+                    self.data[0xff] = false;
+                    pc = (a1 as usize) << 16 | (a2 as usize) << 8 | a3 as usize;
+                } else {
+                    pc += 1; // skip addr
+                }
             }
         }
     }
