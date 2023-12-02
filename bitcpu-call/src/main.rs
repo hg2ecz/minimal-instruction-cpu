@@ -143,17 +143,21 @@ impl Vcpu {
                 pc = pc_save.pop().unwrap(); // return, postinc PC
             }
             pc += 1; // inc PC
-                     // jump if true OR call
+
+            // jump if true OR call
             if self.data[0xff] || (dst == 0xff && src2 == 0xfe) {
                 self.data[0xff] = false;
                 if src2 == 0xfe {
                     pc_save.push(pc); // call
                 }
                 let (a1, a2, a3) = prog[pc];
+                // trace (debug)
                 if trace {
+                    let tracemsg = if src2 == 0xfe { "call" } else { "jmp" };
                     eprintln!("{pc:04x}: {a1:02x}, {a2:02x}, {a3:02x}");
-                    eprintln!("--- jmp/call ---");
+                    eprintln!("--- {tracemsg} ---");
                 }
+                // end of trace (debug)
                 pc = (a1 as usize) << 16 | (a2 as usize) << 8 | a3 as usize;
             }
         }
@@ -175,6 +179,6 @@ fn main() {
         let mut vcpu = Vcpu::new(cputype);
         vcpu.runner(&prog, trace);
     } else {
-        eprintln!("usage: nandcpu <file.bcpu>");
+        eprintln!("usage: bitcpu <file.nand> [trace]");
     }
 }
