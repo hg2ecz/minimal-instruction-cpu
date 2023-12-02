@@ -1,42 +1,54 @@
 NAND_CPU       # first line: TYPE of VCPU
 # -- addressing ---------------
-# 0x00 .. 0xfa : RAM bit
-# 0xfb         : return indicator, read H level
-# 0xfc         : cond jmp + u16 addr, read H level; reg_b == 0xfc: call
-# 0xfd         : stdin
-# 0xfe         : stdout, read H level
-# 0xff         : read L level
-
+# 0x00 .. 0xfc : RAM bit
+# 0xfd         : stdin, stdout
+# 0xfe         : read L level, write: RET
+# 0xff         : read H level, write: JMP, if SRCB == 0xFE CALL
 # --------------------------------
-# Instruction format: addrA addrB JMPaddr
-# Operation:  mem[addrA] -= mem[addrB] and if <= 0, PC += JMPaddr
-# I/O out default value is always 0, so  out = 0 - mem[addrB];
+# Instructions: DST SRC1 SRC2
+# Operation:  *DST = !(*SRC1 & *SRC2)
 # --------------------------------
 
-0x00ff # H -> 0x00
-0x01ff # H -> 0x01
-0x02ff # H -> 0x00
-0x03ff # H -> 0x01
-0x00fd # read bit
-0x01fd # read bit
-0x02fd # read bit
-0x03fd # read bit
+# -- read 8 bit --
+0x00fffd # read !bit
+0x01fffd # read !bit
+0x02fffd # read !bit
+0x03fffd # read !bit
 
-0x04ff # H -> 0x00
-0x05ff # H -> 0x01
-0x06ff # H -> 0x00
-0x07ff # H -> 0x01
-0x04fd # read bit
-0x05fd # read bit
-0x06fd # read bit
-0x07fd # read bit
+0x04fffd # read !bit
+0x05fffd # read !bit
+0x06fffd # read !bit
+0x07fffd # read !bit
 
-0xfe00 # put bit
-0xfe01 # put bit
-0xfe02 # put bit
-0xfe03 # put bit
+# -- print 8 bit --
+0xfdff00 # put !bit
+0xfdff01 # put !bit
+0xfdff02 # put !bit
+0xfdff03 # put !bit
 
-0xfe04 # put bit
-0xfe05 # put bit
-0xfe06 # put bit
-0xfe07 # put bit
+0xfdff04 # put !bit
+0xfdff05 # put !bit
+0xfdff06 # put !bit
+0xfdff07 # put !bit
+
+# -- inverse 8 bit --
+0x00ff00 # inversion (NAND)
+0x01ff01 # inversion
+0x02ff02 # inversion
+0x03ff03 # inversion
+
+0x04ff04 # inversion
+0x05ff05 # inversion
+0x06ff06 # inversion
+0x07ff07 # inversion
+
+# -- print 8 bit --
+0xfdff00 # put !bit
+0xfdff01 # put !bit
+0xfdff02 # put !bit
+0xfdff03 # put !bit
+
+0xfdff04 # put !bit
+0xfdff05 # put !bit
+0xfdff06 # put !bit
+0xfdff07 # put !bit

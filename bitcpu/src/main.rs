@@ -10,11 +10,11 @@ enum CpuType {
 
 // 8 bit dstsrc, 8 bit src
 //    or 16 bit jmpaddr
-type Instr = u16;
+type Instr = (u8, u8, u8);
 
-fn parser(value: &str) -> u16 {
+fn parser(value: &str) -> u32 {
     if value.starts_with("0x") {
-        u16::from_str_radix(value.strip_prefix("0x").unwrap(), 16).unwrap()
+        u32::from_str_radix(value.strip_prefix("0x").unwrap(), 16).unwrap()
     } else {
         value.parse().unwrap()
     }
@@ -42,7 +42,7 @@ fn compiler(src: &str) -> (CpuType, Vec<Instr>) {
             continue;
         }
         let inst = parser(rowstart);
-        prog.push(inst);
+        prog.push(((inst >> 16) as u8, (inst >> 8) as u8, inst as u8));
     }
     (cputype, prog)
 }
@@ -75,7 +75,7 @@ impl Vcpu {
     }
 
     fn putbit(&mut self, value: bool) {
-        print!("{}", (0x30 + value as u8) as char);
+        print!("{}", (0x30 + value as u8) as char); // inverse
         self.outct += 1;
         match self.outct {
             4 => print!(" "),
@@ -89,53 +89,49 @@ impl Vcpu {
 
     // Memory & memory mapped functions
     fn mem_rd(&self, addr: u8) -> bool {
-        let tf = match self.cputype {
-            CpuType::Nand => true, // true & true --> false
-            CpuType::Nor => false, // false | false --> true
-            CpuType::Xor => false,
-            CpuType::Xnor => false,
-        };
         match addr {
-            0x00..=0xfc => self.data[addr as usize], // generic RAM, 0xfc: jmp
+            0x00..=0xfc => self.data[addr as usize], // generic RAM
             0xfd => self.getbit(),                   // stdin  - Read stdin,
-            0xfe => tf,                              // stdout - Read const
-            0xff => !tf,                             // read const
+            0xfe => false,                           // const false
+            0xff => true,                            // const true
         }
     }
 
     // Memory & memory mapped functions
     fn mem_wr(&mut self, addr: u8, value: bool) {
         match addr {
-            0x00..=0xfd => self.data[addr as usize] = value, // RAM, 0xfc write: JMP indicator
-            0xfe => self.putbit(value),                      // stdout
-            0xff => (),
+            0x00..=0xfc => self.data[addr as usize] = value, // RAM
+            0xfd => self.putbit(value),                      // stdout
+            0xfe | 0xff => (),
         }
     }
 
-    pub fn runner(&mut self, prog: &[Instr]) {
-        let jmpflag_default = match self.cputype {
-            CpuType::Nand => true, // true & true --> false
-            CpuType::Nor => false, // false | false --> true
-            CpuType::Xor => false,
-            CpuType::Xnor => false,
-        };
-        self.mem_wr(0xfc, jmpflag_default); // no jmp
-
+    pub fn runner(&mut self, prog: &[Instr], trace: bool) {
         let mut pc = 0;
         // CPU run
         while pc < prog.len() {
-            if self.mem_rd(0xfc) ^ jmpflag_default {
-                pc = prog[pc] as usize; // jmp
-                self.mem_wr(0xfc, jmpflag_default); // jmp flag reset
-            } else {
-                let rega = (prog[pc] >> 8) as u8;
-                let regb = prog[pc] as u8;
-                match self.cputype {
-                    CpuType::Nand => self.mem_wr(rega, !(self.mem_rd(rega) & self.mem_rd(regb))),
-                    CpuType::Nor => self.mem_wr(rega, !(self.mem_rd(rega) | self.mem_rd(regb))),
-                    CpuType::Xor => self.mem_wr(rega, self.mem_rd(rega) ^ self.mem_rd(regb)),
-                    CpuType::Xnor => self.mem_wr(rega, !(self.mem_rd(rega) ^ self.mem_rd(regb))),
+            let (dst, src1, src2) = prog[pc];
+            // trace (debug)
+            if trace {
+                let mut tracemem = String::new();
+                for (i, &dbool) in self.data[0..0x80].iter().enumerate() {
+                    let d = 0x30 + dbool as u8;
+                    tracemem.push(d as char);
+                    if i % 4 == 3 {
+                        tracemem.push(' ');
+                    }
+                    if i % 8 == 7 {
+                        tracemem.push(' ');
+                    }
                 }
+                eprintln!("{pc:04x}: {dst:02x}, {src1:02x}, {src2:02x} mem: {tracemem}");
+            }
+            // end of trace (debug)
+            match self.cputype {
+                CpuType::Nand => self.mem_wr(dst, !(self.mem_rd(src1) & self.mem_rd(src2))),
+                CpuType::Nor => self.mem_wr(dst, !(self.mem_rd(src1) | self.mem_rd(src2))),
+                CpuType::Xor => self.mem_wr(dst, self.mem_rd(src1) ^ self.mem_rd(src2)),
+                CpuType::Xnor => self.mem_wr(dst, !(self.mem_rd(src1) ^ self.mem_rd(src2))),
             }
             pc += 1;
         }
@@ -147,9 +143,15 @@ fn main() {
         let mut file = File::open(fname).expect("program file not found");
         let mut src = String::new();
         file.read_to_string(&mut src).expect("failed to read");
+        let mut trace = false;
+        if let Some(param) = std::env::args().nth(2) {
+            if param == "trace" {
+                trace = true
+            }
+        }
         let (cputype, prog) = compiler(&src);
         let mut vcpu = Vcpu::new(cputype);
-        vcpu.runner(&prog);
+        vcpu.runner(&prog, trace);
     } else {
         eprintln!("usage: nandcpu <file.bcpu>");
     }
