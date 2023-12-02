@@ -49,7 +49,7 @@ fn compiler(src: &str) -> (CpuType, Vec<Instr>) {
 
 // -- VCPU Runner --
 struct Vcpu {
-    outct: u8, // for formatted print!()
+    io_func_outct: u8, // for formatted print!()
     cputype: CpuType,
     data: [bool; 256],
 }
@@ -58,13 +58,13 @@ impl Vcpu {
     pub fn new(cputype: CpuType) -> Self {
         let data = [false; 256];
         Vcpu {
-            outct: 0,
+            io_func_outct: 0,
             cputype,
             data,
         }
     }
 
-    fn getbit(&self) -> bool {
+    fn io_getbit(&self) -> bool {
         loop {
             let mut inp: [u8; 1] = [0; 1];
             io::stdin().read_exact(&mut inp).expect("failed to read");
@@ -74,14 +74,14 @@ impl Vcpu {
         }
     }
 
-    fn putbit(&mut self, value: bool) {
+    fn io_putbit(&mut self, value: bool) {
         print!("{}", (0x30 + value as u8) as char); // inverse
-        self.outct += 1;
-        match self.outct {
+        self.io_func_outct += 1;
+        match self.io_func_outct {
             4 => print!(" "),
             8 => {
                 print!("  ");
-                self.outct = 0;
+                self.io_func_outct = 0;
             }
             _ => (),
         }
@@ -91,18 +91,17 @@ impl Vcpu {
     fn mem_rd(&self, addr: u8) -> bool {
         match addr {
             0x00..=0xfc => self.data[addr as usize], // generic RAM
-            0xfd => self.getbit(),                   // stdin  - Read stdin,
-            0xfe => false,                           // const false
-            0xff => true,                            // const true
+            0xfd => self.io_getbit(),                // stdin  - Read stdin,
+            0xfe => false,                           // const GND
+            0xff => true,                            // const +3v3
         }
     }
 
     // Memory & memory mapped functions
     fn mem_wr(&mut self, addr: u8, value: bool) {
         match addr {
-            0x00..=0xfc => self.data[addr as usize] = value, // RAM
-            0xfd => self.putbit(value),                      // stdout
-            0xfe | 0xff => self.data[addr as usize] = value,
+            0xfd => self.io_putbit(value),         // stdout
+            _ => self.data[addr as usize] = value, // RAM
         }
     }
 
