@@ -18,7 +18,7 @@ NAND_CPU       # first line: TYPE of VCPU
 # 2: inB, b
 # 3: tmp
 # 4: tmp2
-# See picture
+# See picture: adder_nand_full.jpg
 0x030102 # U1, tmp = nand(A, B) -> U2, U3, U9
 0x010301 # U2, a = nand(tmp, A) -> U4
 0x020302 # U3, b = nand(tmp, B) -> U4

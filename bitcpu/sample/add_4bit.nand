@@ -26,21 +26,17 @@ NAND_CPU       # first line: TYPE of VCPU
 0x01ff13 # A
 0x02ff17 # B
 
-# 0: Carry in/out
-# 1: inA, a, result,
-# 2: inB, b
+# Half Adder
+# 0: Carry out
+# 1: inA, result,
+# 2: inB,
 # 3: tmp
-# 4: tmp2
-# See picture
-0x030102 # U1, tmp = nand(A, B) -> U2, U3, U9
-0x010301 # U2, a = nand(tmp, A) -> U4
-0x020302 # U3, b = nand(tmp, B) -> U4
-0x010102 # U4, a = nand(a, b) -> U5, U6
-0x040100 # U5, tmp2 = nand(a, Carry) -> U6, U7, U9
-0x010401 # U6, a = nand(tmp2, a) -> U8
-0x020400 # U7, b = nand(tmp2, Carry) -> U8
-0x010102 # U8, a = nand(a, b) -> A_out
-0x000304 # U9, carry = nand(tmp, tmp2) -> Carry_out
+# See picture: adder_nand_half.jpg
+0x030102 # U1, tmp = nand(A, B) -> U2, U3, U4
+0x000303 # U2, carry_out = nand(tmp, tmp)
+0x010301 # U3, a = nand(tmp, a) -> U5
+0x020302 # U4, b = nand(tmp, B) -> U5
+0x010102 # U5, a_out = nand(a, b)
 
 0x0fff01 # store 0x0f
 
@@ -48,6 +44,13 @@ NAND_CPU       # first line: TYPE of VCPU
 0x01ff12 # A
 0x02ff16 # B
 
+# Full adder
+# 0: Carry in/out
+# 1: inA, a, result,
+# 2: inB, b
+# 3: tmp
+# 4: tmp2
+# See picture: adder_nand_full.jpg
 0x030102 # U1, tmp = nand(A, B) -> U2, U3, U9
 0x010301 # U2, a = nand(tmp, A) -> U4
 0x020302 # U3, b = nand(tmp, B) -> U4
