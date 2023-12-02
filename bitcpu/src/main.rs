@@ -141,8 +141,9 @@ impl Vcpu {
                 CpuType::Xor => self.mem_wr(dst, self.mem_rd(src1) ^ self.mem_rd(src2)),
                 CpuType::Xnor => self.mem_wr(dst, !(self.mem_rd(src1) ^ self.mem_rd(src2))),
             }
+            pc += 1; // inc PC
+
             // jump if true
-            pc += 1;
             if dst == 0xff {
                 let (a1, a2, a3) = prog[pc];
                 self.trace_print_jmp(pc, a1, a2, a3, trace); // trace for debug
