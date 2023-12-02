@@ -102,7 +102,7 @@ impl Vcpu {
         match addr {
             0x00..=0xfc => self.data[addr as usize] = value, // RAM
             0xfd => self.putbit(value),                      // stdout
-            0xfe | 0xff => (),                               // RET, JMP
+            0xfe | 0xff => self.data[addr as usize] = value, // RET, JMP
         }
     }
 
@@ -143,7 +143,9 @@ impl Vcpu {
                 pc = pc_save.pop().unwrap(); // return, postinc PC
             }
             pc += 1; // inc PC
-            if dst == 0xff {
+                     // jump if true OR call
+            if self.data[0xff] || (dst == 0xff && src2 == 0xfe) {
+                self.data[0xff] = false;
                 if src2 == 0xfe {
                     pc_save.push(pc); // call
                 }

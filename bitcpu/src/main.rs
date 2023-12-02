@@ -102,7 +102,7 @@ impl Vcpu {
         match addr {
             0x00..=0xfc => self.data[addr as usize] = value, // RAM
             0xfd => self.putbit(value),                      // stdout
-            0xfe | 0xff => (),
+            0xfe | 0xff => self.data[addr as usize] = value,
         }
     }
 
@@ -134,6 +134,16 @@ impl Vcpu {
                 CpuType::Xnor => self.mem_wr(dst, !(self.mem_rd(src1) ^ self.mem_rd(src2))),
             }
             pc += 1;
+            // jump if true
+            if self.data[0xff] {
+                self.data[0xff] = false;
+                let (a1, a2, a3) = prog[pc];
+                if trace {
+                    eprintln!("{pc:04x}: {a1:02x}, {a2:02x}, {a3:02x}");
+                    eprintln!("--- jmp ---");
+                }
+                pc = (a1 as usize) << 16 | (a2 as usize) << 8 | a3 as usize;
+            }
         }
     }
 }
