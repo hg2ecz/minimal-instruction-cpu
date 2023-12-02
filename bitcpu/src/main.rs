@@ -115,16 +115,16 @@ impl Vcpu {
             if trace {
                 let mut tracemem = String::new();
                 for (i, &dbool) in self.data[0..0x80].iter().enumerate() {
+                    if i % 4 == 0 {
+                        tracemem.push(' ');
+                    }
+                    if i % 8 == 0 {
+                        tracemem.push(' ');
+                    }
                     let d = 0x30 + dbool as u8;
                     tracemem.push(d as char);
-                    if i % 4 == 3 {
-                        tracemem.push(' ');
-                    }
-                    if i % 8 == 7 {
-                        tracemem.push(' ');
-                    }
                 }
-                eprintln!("{pc:04x}: {dst:02x}, {src1:02x}, {src2:02x} mem: {tracemem}");
+                eprintln!("{pc:04x}: {dst:02x}, {src1:02x}, {src2:02x} mem:{tracemem}");
             }
             // end of trace (debug)
             match self.cputype {

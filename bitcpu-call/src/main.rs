@@ -52,7 +52,6 @@ struct Vcpu {
     outct: u8, // for formatted print!()
     cputype: CpuType,
     data: [bool; 256],
-    jmp_next: bool,
 }
 
 impl Vcpu {
@@ -62,7 +61,6 @@ impl Vcpu {
             outct: 0,
             cputype,
             data,
-            jmp_next: false,
         }
     }
 
@@ -109,9 +107,7 @@ impl Vcpu {
     }
 
     pub fn runner(&mut self, prog: &[Instr], trace: bool) {
-        self.jmp_next = false;
         let mut pc_save = vec![];
-        let mut trace_pc_change_flag = false;
 
         let mut pc = 0;
         // CPU run
@@ -121,47 +117,43 @@ impl Vcpu {
             if trace {
                 let mut tracemem = String::new();
                 for (i, &dbool) in self.data[0..0x80].iter().enumerate() {
+                    if i % 4 == 0 {
+                        tracemem.push(' ');
+                    }
+                    if i % 8 == 0 {
+                        tracemem.push(' ');
+                    }
                     let d = 0x30 + dbool as u8;
                     tracemem.push(d as char);
-                    if i % 4 == 3 {
-                        tracemem.push(' ');
-                    }
-                    if i % 8 == 7 {
-                        tracemem.push(' ');
-                    }
                 }
-                eprintln!("{pc:04x}: {dst:02x}, {src1:02x}, {src2:02x} mem: {tracemem}");
-                if dst == 0xfe || trace_pc_change_flag {
-                    eprintln!("---");
-                    trace_pc_change_flag = false;
-                } else if dst == 0xff {
-                    trace_pc_change_flag = true;
+                eprintln!("{pc:04x}: {dst:02x}, {src1:02x}, {src2:02x} mem:{tracemem}");
+                if dst == 0xfe {
+                    eprintln!("--- ret ---");
                 }
             }
             // end of trace (debug)
 
-            if self.jmp_next {
-                pc = (dst as usize) << 16 | (src1 as usize) << 8 | src2 as usize; // jmp
-                self.jmp_next = false;
-                continue;
-            } else {
-                match dst {
-                    0xff => {
-                        self.jmp_next = true; // next: jmp
-                        if src2 == 0xfe {
-                            pc_save.push(pc + 1); // +1: call address
-                        }
-                    }
-                    0xfe => pc = pc_save.pop().unwrap(), // return
-                    _ => match self.cputype {
-                        CpuType::Nand => self.mem_wr(dst, !(self.mem_rd(src1) & self.mem_rd(src2))),
-                        CpuType::Nor => self.mem_wr(dst, !(self.mem_rd(src1) | self.mem_rd(src2))),
-                        CpuType::Xor => self.mem_wr(dst, self.mem_rd(src1) ^ self.mem_rd(src2)),
-                        CpuType::Xnor => self.mem_wr(dst, !(self.mem_rd(src1) ^ self.mem_rd(src2))),
-                    },
-                }
+            match self.cputype {
+                CpuType::Nand => self.mem_wr(dst, !(self.mem_rd(src1) & self.mem_rd(src2))),
+                CpuType::Nor => self.mem_wr(dst, !(self.mem_rd(src1) | self.mem_rd(src2))),
+                CpuType::Xor => self.mem_wr(dst, self.mem_rd(src1) ^ self.mem_rd(src2)),
+                CpuType::Xnor => self.mem_wr(dst, !(self.mem_rd(src1) ^ self.mem_rd(src2))),
             }
-            pc += 1;
+            if dst == 0xfe {
+                pc = pc_save.pop().unwrap(); // return, postinc PC
+            }
+            pc += 1; // inc PC
+            if dst == 0xff {
+                if src2 == 0xfe {
+                    pc_save.push(pc); // call
+                }
+                let (a1, a2, a3) = prog[pc];
+                if trace {
+                    eprintln!("{pc:04x}: {a1:02x}, {a2:02x}, {a3:02x}");
+                    eprintln!("--- jmp/call ---");
+                }
+                pc = (a1 as usize) << 16 | (a2 as usize) << 8 | a3 as usize;
+            }
         }
     }
 }
