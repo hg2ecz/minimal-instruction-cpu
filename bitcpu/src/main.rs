@@ -64,6 +64,30 @@ impl Vcpu {
         }
     }
 
+    fn trace_print(&self, pc: usize, dst: u8, src1: u8, src2: u8, trace: bool) {
+        if trace {
+            let mut tracemem = String::new();
+            for (i, &dbool) in self.data[0..0x80].iter().enumerate() {
+                if i % 4 == 0 {
+                    tracemem.push(' ');
+                }
+                if i % 8 == 0 {
+                    tracemem.push(' ');
+                }
+                let d = 0x30 + dbool as u8;
+                tracemem.push(d as char);
+            }
+            eprintln!("{pc:04x}: {dst:02x}, {src1:02x}, {src2:02x} mem:{tracemem}");
+        }
+    }
+
+    fn trace_print_jmp(&self, pc: usize, a1: u8, a2: u8, a3: u8, trace: bool) {
+        if trace {
+            eprintln!("{pc:04x}: {a1:02x}, {a2:02x}, {a3:02x}");
+            eprintln!("--- jmp ---");
+        }
+    }
+
     fn io_getbit(&self) -> bool {
         loop {
             let mut inp: [u8; 1] = [0; 1];
@@ -110,22 +134,7 @@ impl Vcpu {
         // CPU run
         while pc < prog.len() {
             let (dst, src1, src2) = prog[pc];
-            // trace (debug)
-            if trace {
-                let mut tracemem = String::new();
-                for (i, &dbool) in self.data[0..0x80].iter().enumerate() {
-                    if i % 4 == 0 {
-                        tracemem.push(' ');
-                    }
-                    if i % 8 == 0 {
-                        tracemem.push(' ');
-                    }
-                    let d = 0x30 + dbool as u8;
-                    tracemem.push(d as char);
-                }
-                eprintln!("{pc:04x}: {dst:02x}, {src1:02x}, {src2:02x} mem:{tracemem}");
-            }
-            // end of trace (debug)
+            self.trace_print(pc, dst, src1, src2, trace); // trace for debug
             match self.cputype {
                 CpuType::Nand => self.mem_wr(dst, !(self.mem_rd(src1) & self.mem_rd(src2))),
                 CpuType::Nor => self.mem_wr(dst, !(self.mem_rd(src1) | self.mem_rd(src2))),
@@ -137,10 +146,7 @@ impl Vcpu {
             if self.data[0xff] {
                 self.data[0xff] = false;
                 let (a1, a2, a3) = prog[pc];
-                if trace {
-                    eprintln!("{pc:04x}: {a1:02x}, {a2:02x}, {a3:02x}");
-                    eprintln!("--- jmp ---");
-                }
+                self.trace_print_jmp(pc, a1, a2, a3, trace); // trace for debug
                 pc = (a1 as usize) << 16 | (a2 as usize) << 8 | a3 as usize;
             }
         }
