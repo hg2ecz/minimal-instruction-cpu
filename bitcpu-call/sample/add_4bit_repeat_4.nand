@@ -11,8 +11,24 @@ NAND_CPU       # first line: TYPE of VCPU
 
 # start
 0xff00ff # jmp
-12       # addr, realstart
+24       # addr, realstart
 
+# Address: 2
+# Half Adder
+# 0: Carry out
+# 1: inA, result,
+# 2: inB,
+# 3: tmp
+# See picture: adder_nand_half.jpg
+0x030102 # U1, tmp = nand(A, B) -> U2, U3, U4
+0x000303 # U2, carry_out = nand(tmp, tmp)
+0x010301 # U3, a = nand(tmp, a) -> U5
+0x020302 # U4, b = nand(tmp, B) -> U5
+0x010102 # U5, a_out = nand(a, b)
+0xfe0000 # RETURN
+
+# Address: 8
+# Full Adder
 # 0: Carry in/out
 # 1: inA, a, result,
 # 2: inB, b
@@ -30,10 +46,25 @@ NAND_CPU       # first line: TYPE of VCPU
 0x000304 # U9, carry = nand(tmp, tmp2) -> Carry_out
 0xfe0000 # RETURN
 
+# Address: 18
+# Half Adder for counter
+# 1: inA, result,
+# 2: inB, carry out
+# 3: tmp
+# See picture: adder_nand_half.jpg
+0x030102 # U1, tmp = nand(A, B) -> U2, U3, U4
+0x010301 # U3, a = nand(tmp, a) -> U5
+0x020302 # U4, b = nand(tmp, B) -> U5
+0x010102 # U5, a_out = nand(a, b)         --> pin A
+0x020303 # U2, carry_out = nand(tmp, tmp) --> pin B
+0xfe0000 # RETURN
+
+# Address 24
 # real start
 0x18fefe # zero (inv, counter)
 0x19fefe # zero (inv, counter)
 
+# Address 26 - loop
 # bit input: 0x10..0x17
 0x10fffd # read bit
 0x11fffd # read bit
@@ -45,29 +76,29 @@ NAND_CPU       # first line: TYPE of VCPU
 0x16fffd # read bit
 0x17fffd # read bit
 
-0x00ffff # lowest carry 0
+### 0x00ffff # lowest carry 0 --> half adder
 0x01ff13 # A
 0x02ff17 # B
 0xff00fe # call
-2        # ADDR
+2        # half adder
 0x0fff01 # store 0x0f
 
 0x01ff12 # A
 0x02ff16 # B
 0xff00fe # call
-2        # ADDR
+8        # full adder
 0x0eff01 # store 0x0e
 
 0x01ff11 # A
 0x02ff15 # B
 0xff00fe # call
-2        # ADDR
+8        # full adder
 0x0dff01 # store 0x0d
 
 0x01ff10 # A
 0x02ff14 # B
 0xff00fe # call
-2        # ADDR
+8        # full adder
 0x0cff01 # store 0x0c
 
 0x00ff00 # Read (invert) carry
@@ -82,23 +113,22 @@ NAND_CPU       # first line: TYPE of VCPU
 0xfdff0f # put bit
 
 # for counter icrement
-0x00ffff # lowest carry 0
 # 0. bit
 0x01ff18 # A
 0x02fffe # B (inverted!)
 0xff00fe # call
-2        # ADDR
+18       # half adder for counter
 0x18ff01 # store 0x18
 
 # 1. bit
 0x01ff19 # A
-0x02ffff # B (L, inverted!)
+#########  B is previous carry
 0xff00fe # call
-2        # ADDR
+18       # half adder for counter
 0x19ff01 # store 0x19
 
-0xffff00 # Conditional jmp
-14       # ADDR
+0xffff02 # Conditional jmp (carry: B)
+26       # ADDR
 
 # For test only
 0xfdff00 # put carry bit

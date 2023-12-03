@@ -11,8 +11,22 @@ NAND_CPU       # first line: TYPE of VCPU
 
 # start
 0xff00ff # jmp
-12       # addr, realstart
+18       # addr, realstart
 
+# Half Adder
+# 0: Carry out
+# 1: inA, result,
+# 2: inB,
+# 3: tmp
+# See picture: adder_nand_half.jpg
+0x030102 # U1, tmp = nand(A, B) -> U2, U3, U4
+0x000303 # U2, carry_out = nand(tmp, tmp)
+0x010301 # U3, a = nand(tmp, a) -> U5
+0x020302 # U4, b = nand(tmp, B) -> U5
+0x010102 # U5, a_out = nand(a, b)
+0xfe0000 # RETURN
+
+# Full Adder
 # 0: Carry in/out
 # 1: inA, a, result,
 # 2: inB, b
@@ -41,29 +55,29 @@ NAND_CPU       # first line: TYPE of VCPU
 0x16fffd # read bit
 0x17fffd # read bit
 
-0x00ffff # lowest carry 0
+### 0x00ffff # lowest carry 0 --> half adder
 0x01ff13 # A
 0x02ff17 # B
 0xff00fe # call
-2        # ADDR
+2        # half adder
 0x0fff01 # store 0x0f
 
 0x01ff12 # A
 0x02ff16 # B
 0xff00fe # call
-2        # ADDR
+8        # full adder
 0x0eff01 # store 0x0e
 
 0x01ff11 # A
 0x02ff15 # B
 0xff00fe # call
-2        # ADDR
+8        # full adder
 0x0dff01 # store 0x0d
 
 0x01ff10 # A
 0x02ff14 # B
 0xff00fe # call
-2        # ADDR
+8        # full adder
 0x0cff01 # store 0x0c
 
 0x00ff00 # Read (invert) carry
