@@ -89,6 +89,12 @@ impl Vcpu {
         }
     }
 
+    fn trace_print_ret(&self, trace: bool) {
+        if trace {
+            eprintln!("--- ret ---");
+        }
+    }
+
     fn io_getbit(&self) -> bool {
         loop {
             let mut inp: [u8; 1] = [0; 1];
@@ -146,6 +152,7 @@ impl Vcpu {
             }
             if dst == 0xfe {
                 pc = pc_save.pop().unwrap(); // return, postinc PC
+                self.trace_print_ret(trace);
             }
             pc += 1; // inc PC
 
