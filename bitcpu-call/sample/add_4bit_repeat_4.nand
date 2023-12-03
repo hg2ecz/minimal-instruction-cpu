@@ -114,21 +114,20 @@ NAND_CPU       # first line: TYPE of VCPU
 
 # for counter icrement
 # 0. bit
-0x01ff18 # A
-0x02fffe # B (inverted!)
+0x01ff18 # 0x18 -> A
+0x02fffe #    H -> B
 0xff00fe # call
 18       # half adder for counter
-0x18ff01 # store 0x18
+0x18ff01 # A -> 0x18
 
 # 1. bit
-0x01ff19 # A
-#########  B is previous carry
+0x01ff19 # 0x19 -> A   (B is the previous carry)
 0xff00fe # call
 18       # half adder for counter
-0x19ff01 # store 0x19
+0x19ff01 # A -> 0x19
 
-0xffff02 # Conditional jmp (carry: B)
-26       # ADDR
+0xffff02 # Conditional jmp (carry from B)
+26       # loop addr
 
 # For test only
-0xfdff00 # put carry bit
+0xfdff02 # put carry bit
