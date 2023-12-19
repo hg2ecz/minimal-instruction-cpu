@@ -141,7 +141,7 @@ NAND_CPU       # first line: TYPE of VCPU
 
 0x19ff01 # store 0x19
 
-0x00ff00 # skip register
+0x00ff00 # invert (see store)
 0xfeff00 # skip register
 0xff0002 # jmp + addr
 

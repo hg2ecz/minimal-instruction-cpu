@@ -1,9 +1,10 @@
 NAND_CPU       # first line: TYPE of VCPU
 # -- addressing ---------------
-# 0x00 .. 0xfc : RAM bit
+# 0x00 .. 0xfb : RAM bit
+# 0xfc         : write: CALL [SRC1 SRC2], RET if SRC1 MSB is high
 # 0xfd         : stdin, stdout
-# 0xfe         : read L level, write: RET
-# 0xff         : read H level, write: JMP, if SRCB == 0xFE CALL
+# 0xfe         : read L level, write: SKIP next
+# 0xff         : read H level, write: JMP [SRC1 SRC2]
 # --------------------------------
 # Instructions: DST SRC1 SRC2
 # Operation:  *DST = !(*SRC1 & *SRC2)

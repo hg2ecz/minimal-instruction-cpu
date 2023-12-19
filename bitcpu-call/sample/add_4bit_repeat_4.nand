@@ -4,20 +4,20 @@ NAND_CPU       # first line: TYPE of VCPU
 # stdout: result, stderr: trace info
 
 # -- addressing ---------------
-# 0x00 .. 0xfc : RAM bit
+# 0x00 .. 0xfb : RAM bit
+# 0xfc         : write: CALL [SRC1 SRC2], RET if SRC1 MSB is high
 # 0xfd         : stdin, stdout
-# 0xfe         : read L level, write: RET
-# 0xff         : read H level, write: JMP, if SRCB == 0xFE CALL
+# 0xfe         : read L level, write: SKIP next
+# 0xff         : read H level, write: JMP [SRC1 SRC2]
 # --------------------------------
 # Instructions: DST SRC1 SRC2
 # Operation:  *DST = !(*SRC1 & *SRC2)
 # --------------------------------
 
 # start
-0xff00ff # jmp
-24       # addr, realstart
+0xff0017 # jmp
 
-# Address: 2
+# Address: 0x01
 # Half Adder
 # 0: Carry out
 # 1: inA, result,
@@ -29,9 +29,9 @@ NAND_CPU       # first line: TYPE of VCPU
 0x010301 # U3, a = nand(tmp, a) -> U5
 0x020302 # U4, b = nand(tmp, B) -> U5
 0x010102 # U5, a_out = nand(a, b)
-0xfe0000 # RETURN
+0xfc8000 # RETURN
 
-# Address: 8
+# Address: 0x07
 # Full Adder
 # 0: Carry in/out
 # 1: inA, a, result,
@@ -48,9 +48,9 @@ NAND_CPU       # first line: TYPE of VCPU
 0x020400 # U7, b = nand(tmp2, Carry) -> U8
 0x010102 # U8, a = nand(a, b) -> A_out
 0x000304 # U9, carry = nand(tmp, tmp2) -> Carry_out
-0xfe0000 # RETURN
+0xfc8000 # RETURN
 
-# Address: 18
+# Address: 0x11
 # Half Adder for counter
 # 1: inA, result,
 # 2: inB, carry out
@@ -61,14 +61,14 @@ NAND_CPU       # first line: TYPE of VCPU
 0x020302 # U4, b = nand(tmp, B) -> U5
 0x010102 # U5, a_out = nand(a, b)         --> pin A
 0x020303 # U2, carry_out = nand(tmp, tmp) --> pin B
-0xfe0000 # RETURN
+0xfc8000 # RETURN
 
-# Address 24
+# Address 0x17
 # real start
 0x18fefe # zero (inv, counter)
 0x19fefe # zero (inv, counter)
 
-# Address 26 - loop
+# Address 0x19 - loop
 # bit input: 0x10..0x17
 0x10fffd # read bit
 0x11fffd # read bit
@@ -83,26 +83,22 @@ NAND_CPU       # first line: TYPE of VCPU
 ### 0x00ffff # lowest carry 0 --> half adder
 0x01ff13 # A
 0x02ff17 # B
-0xff00fe # call
-2        # half adder
+0xfc0001 # call half adder
 0x0fff01 # store 0x0f
 
 0x01ff12 # A
 0x02ff16 # B
-0xff00fe # call
-8        # full adder
+0xfc0007 # callfull adder
 0x0eff01 # store 0x0e
 
 0x01ff11 # A
 0x02ff15 # B
-0xff00fe # call
-8        # full adder
+0xfc0007 # call full adder
 0x0dff01 # store 0x0d
 
 0x01ff10 # A
 0x02ff14 # B
-0xff00fe # call
-8        # full adder
+0xfc0007 # call full adder
 0x0cff01 # store 0x0c
 
 0x00ff00 # Read (invert) carry
@@ -120,18 +116,17 @@ NAND_CPU       # first line: TYPE of VCPU
 # 0. bit
 0x01ff18 # 0x18 -> A
 0x02fffe #    H -> B
-0xff00fe # call
-18       # half adder for counter
+0xfc0011 # call half adder for counter
 0x18ff01 # A -> 0x18
 
 # 1. bit
 0x01ff19 # 0x19 -> A   (B is the previous carry)
-0xff00fe # call
-18       # half adder for counter
+0xfc0011 # call half adder for counter
 0x19ff01 # A -> 0x19
 
-0xffff02 # Conditional jmp (carry from B)
-26       # loop addr
+0x02ff02 # inv
+0xfeff02 # Conditional skip  (carry from B)
+0xff0019 # jmp loop
 
 # For test only
 0xfdff02 # put carry bit

@@ -4,10 +4,11 @@ NAND_CPU       # first line: TYPE of VCPU
 # stdout: result, stderr: trace info
 
 # -- addressing ---------------
-# 0x00 .. 0xfc : RAM bit
+# 0x00 .. 0xfb : RAM bit
+# 0xfc         : write: CALL [SRC1 SRC2], RET if SRC1 MSB is high
 # 0xfd         : stdin, stdout
-# 0xfe         : read L level, write: RET
-# 0xff         : read H level, write: JMP, if SRCB == 0xFE CALL
+# 0xfe         : read L level, write: SKIP next
+# 0xff         : read H level, write: JMP [SRC1 SRC2]
 # --------------------------------
 # Instructions: DST SRC1 SRC2
 # Operation:  *DST = !(*SRC1 & *SRC2)
@@ -28,7 +29,7 @@ NAND_CPU       # first line: TYPE of VCPU
 0x010301 # U3, a = nand(tmp, a) -> U5
 0x020302 # U4, b = nand(tmp, B) -> U5
 0x010102 # U5, a_out = nand(a, b)
-0xfe0000 # RETURN
+0xfc8000 # RETURN
 
 # Full Adder
 # 0: Carry in/out
@@ -46,7 +47,7 @@ NAND_CPU       # first line: TYPE of VCPU
 0x020400 # U7, b = nand(tmp2, Carry) -> U8
 0x010102 # U8, a = nand(a, b) -> A_out
 0x000304 # U9, carry = nand(tmp, tmp2) -> Carry_out
-0xfe0000 # RETURN
+0xfc8000 # RETURN
 
 # bit input: 0x10..0x17
 0x10fffd # read bit
@@ -62,26 +63,23 @@ NAND_CPU       # first line: TYPE of VCPU
 ### 0x00ffff # lowest carry 0 --> half adder
 0x01ff13 # A
 0x02ff17 # B
-0xff00fe # call
-2        # half adder
+0xfc0002 # call half adder
 0x0fff01 # store 0x0f
 
 0x01ff12 # A
 0x02ff16 # B
-0xff00fe # call
-8        # full adder
+0xfc0008 # call full adder
 0x0eff01 # store 0x0e
 
 0x01ff11 # A
 0x02ff15 # B
-0xff00fe # call
-8        # full adder
+0xfc0008 # call full adder
 0x0dff01 # store 0x0d
 
 0x01ff10 # A
 0x02ff14 # B
-0xff00fe # call
-8        # full adder
+0xfc0008 # call full adder
+
 0x0cff01 # store 0x0c
 
 0x00ff00 # Read (invert) carry

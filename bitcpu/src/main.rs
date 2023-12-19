@@ -127,25 +127,25 @@ impl Vcpu {
         // CPU run
         while pc < prog.len() {
             let (dst, src1, src2) = prog[pc];
-            pc += 1; // inc PC
+            self.trace_print(pc, dst, src1, src2, trace); // trace for debug
 
-            // skip - 0xfe & clear skip
-            if self.data[0xfe] {
-                self.data[0xfe] = false;
-            } else {
-                self.trace_print(pc, dst, src1, src2, trace); // trace for debug
-                                                              // jmp
-                if dst == 0xff {
-                    pc = (src1 as usize) << 8 | src2 as usize;
-                } else {
-                    let result = match self.cputype {
-                        CpuType::Nand => !(self.mem_rd(src1) & self.mem_rd(src2)),
-                        CpuType::Nor => !(self.mem_rd(src1) | self.mem_rd(src2)),
-                        CpuType::Xor => self.mem_rd(src1) ^ self.mem_rd(src2),
-                        CpuType::Xnor => !(self.mem_rd(src1) ^ self.mem_rd(src2)),
-                    };
-                    self.mem_wr(dst, result);
-                }
+            // ALU func
+            let result = match self.cputype {
+                CpuType::Nand => !(self.mem_rd(src1) & self.mem_rd(src2)),
+                CpuType::Nor => !(self.mem_rd(src1) | self.mem_rd(src2)),
+                CpuType::Xor => self.mem_rd(src1) ^ self.mem_rd(src2),
+                CpuType::Xnor => !(self.mem_rd(src1) ^ self.mem_rd(src2)),
+            };
+            self.mem_wr(dst, result);
+            // SKIP next instruction
+            if dst == 0xfe && result {
+                pc += 1;
+            }
+            // normal increment PC
+            pc += 1;
+            // JMP function
+            if dst == 0xff {
+                pc = (src1 as usize) << 8 | src2 as usize;
             }
         }
     }

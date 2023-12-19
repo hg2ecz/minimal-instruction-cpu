@@ -81,10 +81,9 @@ impl Vcpu {
         }
     }
 
-    fn trace_print_jmp(&self, pc: usize, a1: u8, a2: u8, a3: u8, trace: bool, call: bool) {
+    fn trace_print_jmp(&self, trace: bool, call: bool) {
         if trace {
             let tracemsg = if call { "call" } else { "jmp" };
-            eprintln!("{pc:04x}: {a1:02x}, {a2:02x}, {a3:02x}");
             eprintln!("--- {tracemsg} ---");
         }
     }
@@ -144,31 +143,34 @@ impl Vcpu {
         while pc < prog.len() {
             let (dst, src1, src2) = prog[pc];
             self.trace_print(pc, dst, src1, src2, trace); // trace for debug
-            match self.cputype {
-                CpuType::Nand => self.mem_wr(dst, !(self.mem_rd(src1) & self.mem_rd(src2))),
-                CpuType::Nor => self.mem_wr(dst, !(self.mem_rd(src1) | self.mem_rd(src2))),
-                CpuType::Xor => self.mem_wr(dst, self.mem_rd(src1) ^ self.mem_rd(src2)),
-                CpuType::Xnor => self.mem_wr(dst, !(self.mem_rd(src1) ^ self.mem_rd(src2))),
+
+            // ALU func
+            let result = match self.cputype {
+                CpuType::Nand => !(self.mem_rd(src1) & self.mem_rd(src2)),
+                CpuType::Nor => !(self.mem_rd(src1) | self.mem_rd(src2)),
+                CpuType::Xor => self.mem_rd(src1) ^ self.mem_rd(src2),
+                CpuType::Xnor => !(self.mem_rd(src1) ^ self.mem_rd(src2)),
+            };
+            self.mem_wr(dst, result);
+            // SKIP next instruction
+            if dst == 0xfe && result {
+                pc += 1;
             }
-            if dst == 0xfe {
+            // normal increment PC
+            pc += 1;
+            // JMP and call function
+            let call = dst == 0xfc && src1 & 0x80 == 0;
+            if dst == 0xff || call {
+                self.trace_print_jmp(trace, call); // trace for debug
+                if call {
+                    pc_save.push(pc);
+                }
+                pc = (src1 as usize) << 8 | src2 as usize;
+            }
+            // return function
+            if dst == 0xfc && src1 & 0x80 == 0x80 {
                 pc = pc_save.pop().unwrap(); // return, postinc PC
                 self.trace_print_ret(trace);
-            }
-            pc += 1; // inc PC
-
-            // jump if true OR call
-            if dst == 0xff {
-                let (a1, a2, a3) = prog[pc];
-                self.trace_print_jmp(pc, a1, a2, a3, trace, src2 == 0xfe); // trace for debug
-                if self.data[0xff] || src2 == 0xfe {
-                    self.data[0xff] = false;
-                    if src2 == 0xfe {
-                        pc_save.push(pc); // call
-                    }
-                    pc = (a1 as usize) << 16 | (a2 as usize) << 8 | a3 as usize;
-                } else {
-                    pc += 1; // skip addr
-                }
             }
         }
     }
