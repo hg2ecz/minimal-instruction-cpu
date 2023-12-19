@@ -1,9 +1,13 @@
 NAND_CPU       # first line: TYPE of VCPU
+
+# echo "0000 0000 0011 0001 1111 1111 1001 0101" | ../target/release/bitcpu ../sample/add_4bit_repeat_4.nand trace >/dev/null
+# stdout: result, stderr: trace info
+
 # -- addressing ---------------
 # 0x00 .. 0xfc : RAM bit
 # 0xfd         : stdin, stdout
-# 0xfe         : read L level, write: RET
-# 0xff         : read H level, write: JMP, if SRCB == 0xFE CALL
+# 0xfe         : read L level, write: SKIP next
+# 0xff         : read H level, write: JMP [SRC1 SRC2]
 # --------------------------------
 # Instructions: DST SRC1 SRC2
 # Operation:  *DST = !(*SRC1 & *SRC2)
@@ -121,7 +125,7 @@ NAND_CPU       # first line: TYPE of VCPU
 0x020302 # U4, b = nand(tmp, B) -> U5
 0x010102 # U5, a_out = nand(a, b)
 
-0x18ff01 # store 0x0f
+0x18ff01 # store 0x18
 
 # 1. bit
 0x01ff19 # A
@@ -135,9 +139,11 @@ NAND_CPU       # first line: TYPE of VCPU
 0x020302 # U4, b = nand(tmp, B) -> U5
 0x010102 # U5, a_out = nand(a, b)
 
-0x19ff01 # store 0x0e
-0xffff00 # Conditional jmp
-2        # ADDR
+0x19ff01 # store 0x19
+
+0x00ff00 # skip register
+0xfeff00 # skip register
+0xff0002 # jmp + addr
 
 # For test only
 0xfdff00 # put carry bit

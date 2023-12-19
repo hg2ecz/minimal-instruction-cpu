@@ -8,8 +8,8 @@ enum CpuType {
     Xnor,
 }
 
-// 8 bit dstsrc, 8 bit src
-//    or 16 bit jmpaddr
+// 8 bit dst, 8 bit src1, 8 bit src2
+// by jmp addr = src1<<8 + src2
 type Instr = (u8, u8, u8);
 
 fn parser(value: &str) -> u32 {
@@ -81,13 +81,6 @@ impl Vcpu {
         }
     }
 
-    fn trace_print_jmp(&self, pc: usize, a1: u8, a2: u8, a3: u8, trace: bool) {
-        if trace {
-            eprintln!("{pc:04x}: {a1:02x}, {a2:02x}, {a3:02x}");
-            eprintln!("--- jmp ---");
-        }
-    }
-
     fn io_getbit(&self) -> bool {
         loop {
             let mut inp: [u8; 1] = [0; 1];
@@ -134,24 +127,24 @@ impl Vcpu {
         // CPU run
         while pc < prog.len() {
             let (dst, src1, src2) = prog[pc];
-            self.trace_print(pc, dst, src1, src2, trace); // trace for debug
-            match self.cputype {
-                CpuType::Nand => self.mem_wr(dst, !(self.mem_rd(src1) & self.mem_rd(src2))),
-                CpuType::Nor => self.mem_wr(dst, !(self.mem_rd(src1) | self.mem_rd(src2))),
-                CpuType::Xor => self.mem_wr(dst, self.mem_rd(src1) ^ self.mem_rd(src2)),
-                CpuType::Xnor => self.mem_wr(dst, !(self.mem_rd(src1) ^ self.mem_rd(src2))),
-            }
             pc += 1; // inc PC
 
-            // jump if true
-            if dst == 0xff {
-                let (a1, a2, a3) = prog[pc];
-                self.trace_print_jmp(pc, a1, a2, a3, trace); // trace for debug
-                if self.data[0xff] {
-                    self.data[0xff] = false;
-                    pc = (a1 as usize) << 16 | (a2 as usize) << 8 | a3 as usize;
+            // skip - 0xfe & clear skip
+            if self.data[0xfe] {
+                self.data[0xfe] = false;
+            } else {
+                self.trace_print(pc, dst, src1, src2, trace); // trace for debug
+                                                              // jmp
+                if dst == 0xff {
+                    pc = (src1 as usize) << 8 | src2 as usize;
                 } else {
-                    pc += 1; // skip addr
+                    let result = match self.cputype {
+                        CpuType::Nand => !(self.mem_rd(src1) & self.mem_rd(src2)),
+                        CpuType::Nor => !(self.mem_rd(src1) | self.mem_rd(src2)),
+                        CpuType::Xor => self.mem_rd(src1) ^ self.mem_rd(src2),
+                        CpuType::Xnor => !(self.mem_rd(src1) ^ self.mem_rd(src2)),
+                    };
+                    self.mem_wr(dst, result);
                 }
             }
         }
