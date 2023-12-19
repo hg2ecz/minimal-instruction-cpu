@@ -136,7 +136,7 @@ impl Vcpu {
     }
 
     pub fn runner(&mut self, prog: &[Instr], trace: bool) {
-        let mut pc_save = vec![];
+        let mut pc_save = vec![]; // one or more level stack? One is a simple latch.
 
         let mut pc = 0;
         // CPU run
@@ -159,17 +159,17 @@ impl Vcpu {
             // normal increment PC
             pc += 1;
             // JMP and call function
-            let call = dst == 0xfc && src1 & 0x80 == 0;
+            let call = dst == 0xfc && (src1 != 0 || src2 != 0);
             if dst == 0xff || call {
                 self.trace_print_jmp(trace, call); // trace for debug
                 if call {
-                    pc_save.push(pc);
+                    pc_save.push(pc); // one or more level stack? One is a simple latch.
                 }
                 pc = (src1 as usize) << 8 | src2 as usize;
             }
             // return function
-            if dst == 0xfc && src1 & 0x80 == 0x80 {
-                pc = pc_save.pop().unwrap(); // return, postinc PC
+            if dst == 0xfc && src1 == 0x00 && src2 == 0 {
+                pc = pc_save.pop().unwrap(); // one or more level stack? One is a simple latch.
                 self.trace_print_ret(trace);
             }
         }
