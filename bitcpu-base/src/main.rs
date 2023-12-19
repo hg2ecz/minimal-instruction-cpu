@@ -81,6 +81,12 @@ impl Vcpu {
         }
     }
 
+    fn trace_print_jmp(&self, trace: bool) {
+        if trace {
+            eprintln!("--- jmp ---");
+        }
+    }
+
     fn io_getbit(&self) -> bool {
         loop {
             let mut inp: [u8; 1] = [0; 1];
@@ -145,6 +151,7 @@ impl Vcpu {
             pc += 1;
             // JMP function
             if dst == 0xff {
+                self.trace_print_jmp(trace);
                 pc = (src1 as usize) << 8 | src2 as usize;
             }
         }
