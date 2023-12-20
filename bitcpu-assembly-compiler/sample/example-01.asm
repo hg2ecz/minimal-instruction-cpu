@@ -113,4 +113,4 @@ loop:
     jmp loop
 
     # For test only
-    stdout = nand(HIGH, carry) ; put carry bit
+    stdout = nand(HIGH, b) ; put b as negated carry bit
