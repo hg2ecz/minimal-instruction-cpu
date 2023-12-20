@@ -1,3 +1,5 @@
+NAND_CPU       # first line: TYPE of VCPU
+
 stdin  equ 0xfd     ; stdin, stdout
 stdout equ 0xfd     ; stdin, stdout
 
@@ -36,14 +38,14 @@ full_adder:
     carry = nand(tmp, tmp2) ; U9 -> Carry_out
     RET
 
+; Input: A as input and B bits (as carry)
+; Output: A as result and B as carry
 half_adder_for_counter:
-    # Here is only carry and A_in
-    # See picture: adder_nand_half.jpg
-    tmp = nand(a, carry) ; U1 -> U2, U3, U4
-    a = nand(tmp, a)     ; U3 -> U5
-    b = nand(tmp, carry) ; U4 -> U5
-    a = nand(a, carry)   ; U5 --> a_out
-    b = nand(tmp, tmp)   ; carry_out
+    tmp = nand(A, B)   ; U1 -> U2, U3, U4
+    a = nand(tmp, a)   ; U3 -> U5
+    b = nand(tmp, B)   ; U4 -> U5
+    a = nand(a, b)     ; U5 --> pin A
+    b = nand(tmp, tmp) ; U2 --> pin B (here is the carry)
     RET
 
 realstart:
@@ -97,7 +99,7 @@ loop:
     # for counter icrement
     # 0. bit
     a = nand(HIGH, 0x18)
-    carry = nand(LOW, LOW)
+    b = nand(LOW, LOW)        ; b as carry (high)
     CALL half_adder_for_counter
     0x18 = nand(HIGH, a)
 
@@ -106,7 +108,8 @@ loop:
     CALL half_adder_for_counter
     0x19 = nand(HIGH, a)
 
-    skip = nand(HIGH, carry)
+    b = nand(HIGH, b)  ; invert b (as carry)
+    skip = nand(HIGH, b)
     jmp loop
 
     # For test only

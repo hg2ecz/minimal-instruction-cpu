@@ -4,8 +4,9 @@ use std::fs;
 use std::io::BufWriter;
 use std::io::Write;
 use std::iter::FromIterator;
+use std::path::Path;
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 // comment: # and ;
 // hexnum
@@ -76,15 +77,26 @@ fn equ_get(equ_hmap: &HashMap<String, u32>, keyword: &str, linenum: usize) -> u3
     }
 }
 
-fn assembler(assembly_code: &str) -> Vec<u32> {
+fn assembler(assembly_code: &str) -> (String, Vec<u32>) {
+    let mut cpu_type = String::new();
     let mut machine_code = vec![];
     let mut addr_labels = HashMap::new();
     let mut equ_labels = HashMap::new();
     let mut address = 0;
 
     // Stage-1: Process address labels (for forward jmp)
-    for line in assembly_code.lines() {
-        if !line.is_empty() {
+    for (linenum, line) in assembly_code.lines().enumerate() {
+        if linenum == 0 {
+            let cpu_types = ["nand_cpu"];
+            let words: Vec<_> = splitter(line);
+            if cpu_types.iter().any(|e| words[0].contains(e)) {
+                cpu_type = words[0].to_uppercase();
+            } else {
+                eprintln!("First line must be one of these: {:?}", cpu_types);
+                help();
+                std::process::exit(1);
+            }
+        } else if !line.is_empty() {
             if line.ends_with(':') {
                 let label = line.trim_end_matches(':').to_string();
                 addr_labels.insert(label.to_lowercase(), address);
@@ -108,7 +120,7 @@ fn assembler(assembly_code: &str) -> Vec<u32> {
 
     // Stage-2: Generate machine code
     for (linenum, line) in assembly_code.lines().enumerate() {
-        if !line.is_empty() && !line.ends_with(':') {
+        if linenum > 0 && !line.is_empty() && !line.ends_with(':') {
             let words = splitter(line);
             if words.is_empty() {
                 continue;
@@ -160,16 +172,20 @@ fn assembler(assembly_code: &str) -> Vec<u32> {
             }
         }
     }
-
-    machine_code
+    (cpu_type, machine_code)
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     let filename = &args[1];
-    let basename = filename.split('.').next().unwrap();
+    let basename = Path::new(filename)
+        .file_stem()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
     let assembly_code = fs::read_to_string(filename).expect("File not found.");
-    let machine_code = assembler(&assembly_code);
+    let (cpu_type, machine_code) = assembler(&assembly_code);
 
     if DEBUG {
         for (i, code) in machine_code.iter().enumerate() {
@@ -177,8 +193,9 @@ fn main() {
         }
     }
 
-    let file = fs::File::create(basename.to_owned() + ".lst").unwrap();
+    let file = fs::File::create(basename + ".lst").unwrap();
     let mut writer = BufWriter::new(file);
+    writeln!(&mut writer, "{cpu_type}").unwrap();
     for code in machine_code {
         writeln!(&mut writer, "0x{code:06x}").unwrap();
     }
