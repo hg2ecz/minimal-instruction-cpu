@@ -1,12 +1,10 @@
-# One instruction CPU
+# Minimal instruction CPU
 
 ## One bit logical instruction
 Subtypes: nand, nor, xor, xnor
 
-* bitcpu: simple version
-* bitcpu-call: with '''jmp, call, ret''' special register extension
-
-By the jmp and call instructions the next word is an address.
+* bitcpu: simple version with '''skip, jmp'''
+* bitcpu-call: with '''skip, jmp, call, ret''' special dst register address
 
 
     $ echo '1111 1111' | target/release/bitcpu sample/add_4bit.nand
